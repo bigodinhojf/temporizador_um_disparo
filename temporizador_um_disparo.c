@@ -10,13 +10,32 @@ const int led_pin_red = 13; // LED vermelho GPIO 13
 const int button_pin_a = 5; // Botão A GPIO 5
 
 // Variáveis globais
-bool activate = false; // Armazena a informação se a rotina está rodando
+bool rotine_activate = false; // Armazena a informação se a rotina está rodando
 static volatile uint32_t last_time = 0; // Armazena o tempo do último clique dos botões
+int marcador = 0; // Auxilia an decisão de qual LED apagar
 
-// Função de callback do alarm
+// Função de callback do alarme
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
-    // Put your timeout handler code in here
-    return 0;
+
+  // Decide qual LED deve apagar quando rodar a função
+  switch (marcador) {
+        case 0:
+            gpio_put(led_pin_green, 0); // Apaga apenas o LED verde
+            marcador++; // Adiciona mais 1 no marcador, para quando a fução de callback ser chamada novamente, entrar no próximo "case" do "Switch"
+            add_alarm_in_ms(3000, alarm_callback, NULL, false); // Adiciona o mesmo alarme para que a função de callback seja chamada novamente
+            break;
+        case 1:
+            gpio_put(led_pin_blue, 0); // Apaga apenas o LED azul
+            marcador++; // Adiciona mais 1 no marcador, para quando a fução de callback ser chamada novamente, entrar no próximo "case" do "Switch"
+            add_alarm_in_ms(3000, alarm_callback, NULL, false); // Adiciona o mesmo alarme para que a função de callback seja chamada novamente
+            break;
+        case 2:
+            gpio_put(led_pin_red, 0); // Apaga apenas o LED Vermelho
+            rotine_activate = false; // Define a rotina como 'desativada', permitindo o acionamento do botão
+            marcador = 0; // Reinicia o marcador
+            break;
+    }
+  return 0;
 }
 
 
@@ -52,11 +71,11 @@ int main()
             // Debouncing
             uint32_t current_time = to_us_since_boot(get_absolute_time()); // Pega o tempo atual e transforma em us
             // 200 ms
-            if(current_time - last_time > 200000 && !activate){
+            if(current_time - last_time > 200000 && !rotine_activate){
                 last_time = current_time; // Atualização de tempo do último clique
 
-                // Define a rotina como 'rodando'
-                activate = true;
+                // Define a rotina como 'ativada', não permitindo o acionamento do botão
+                rotine_activate = true;
 
                 // Liga todos os LEDs
                 gpio_put(led_pin_green, 1);
@@ -67,5 +86,7 @@ int main()
                 add_alarm_in_ms(3000, alarm_callback, NULL, false);
             }
         }
+      //
+      sleep_ms(10);
     }
 }
